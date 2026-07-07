@@ -2,6 +2,7 @@ import os
 import discord
 from discord.ext import commands, tasks
 import dotenv
+import json
 
 dotenv.load_dotenv()
 
@@ -12,6 +13,14 @@ intents.dm_messages = True
 bot = commands.Bot(command_prefix="! ", intents=intents, help_command=None)
 
 button_messages = {}
+mute_members = []
+
+try:
+    with open("mute.json", mode="r") as mute_data:
+        mute_members = json.load(mute_data)
+        print("セーブをロードしました。")
+except:
+    print("セーブがありません。")
 
 class SendModal(discord.ui.Modal):
     def __init__(self):
@@ -68,11 +77,15 @@ class SendModal(discord.ui.Modal):
 
             view = discord.ui.View(timeout=None)
             view.add_item(discord.ui.Button(label="送信", custom_id="reply_send", style=discord.ButtonStyle.primary))
+            view.add_item(discord.ui.Button(label="ミュート", custom_id="mute", style=discord.ButtonStyle.red))
             button_messages[thread_name] = await interaction.channel.send(view=view)
 
 @tasks.loop(seconds=10)
 async def status_loop():
     await bot.change_presence(activity=discord.CustomActivity(name="連絡はDMへ", emoji="📩"))
+
+    with open("mute.json", mode="w") as mute_data:
+        mute_data.write(json.dumps(mute_members))
 
 @bot.event
 async def on_ready():
@@ -86,6 +99,28 @@ async def on_interaction(interaction: discord.Interaction):
             custom_id = interaction.data.get("custom_id")
             if custom_id == "reply_send":
                 await interaction.response.send_modal(SendModal())
+            elif custom_id == "mute":
+                await interaction.response.defer(ephemeral=True)
+                thread_name = interaction.channel.name
+                try:
+                    user_id = thread_name.split("(")[1].removesuffix(")")
+                    mute_members.append(str(user_id))
+                except Exception:
+                    await interaction.followup.send(content="ミュートできませんでした。", ephemeral=True)
+                    return
+                await interaction.channel.send(content=f"このユーザーをミュートしました。\n-# {interaction.user.mention}がミュートしました。", view=discord.ui.View(timeout=None).add_item(discord.ui.Button(label="ミュート解除", custom_id="unmute", style=discord.ButtonStyle.red)))
+                await interaction.followup.send(content="ミュートしました。")
+            elif custom_id == "unmute":
+                await interaction.response.defer(ephemeral=True)
+                thread_name = interaction.channel.name
+                try:
+                    user_id = thread_name.split("(")[1].removesuffix(")")
+                    mute_members.remove(str(user_id))
+                except Exception:
+                    await interaction.followup.send(content="ミュートを解除できませんでした。", ephemeral=True)
+                    return
+                await interaction.channel.send(content=f"このユーザーのミュートを解除しました。\n-# {interaction.user.mention}が解除しました。", view=discord.ui.View(timeout=None).add_item(discord.ui.Button(label="ミュート解除", custom_id="unmute", style=discord.ButtonStyle.red)))
+                await interaction.followup.send(content="ミュートしました。")
 
 @bot.event
 async def on_message(message: discord.Message):
@@ -100,6 +135,9 @@ async def on_message(message: discord.Message):
     
     if not channel:
         print("指定されたチャンネルが見つかりません。")
+        return
+    
+    if message.author.id in mute_members:
         return
 
     webhooks = await channel.webhooks()
@@ -128,7 +166,7 @@ async def on_message(message: discord.Message):
             pass
 
     await webhook.send(
-        content=message.content, 
+        content=message.content[:1800], 
         allowed_mentions=discord.AllowedMentions.none(), 
         thread=target_thread,
         avatar_url=message.author.display_avatar.url,
@@ -137,6 +175,7 @@ async def on_message(message: discord.Message):
     
     view = discord.ui.View(timeout=None)
     view.add_item(discord.ui.Button(label="送信", custom_id="reply_send", style=discord.ButtonStyle.primary))
+    view.add_item(discord.ui.Button(label="ミュート", custom_id="mute", style=discord.ButtonStyle.red))
     button_messages[thread_name] = await target_thread.send(view=view, content="送信は返信は下のボタンから行えます。")
 
 bot.run(os.environ.get('TOKEN'))
