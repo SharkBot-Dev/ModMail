@@ -109,7 +109,7 @@ async def on_interaction(interaction: discord.Interaction):
                     await interaction.followup.send(content="ミュートできませんでした。", ephemeral=True)
                     return
                 await interaction.channel.send(content=f"このユーザーをミュートしました。\n-# {interaction.user.mention}がミュートしました。", view=discord.ui.View(timeout=None).add_item(discord.ui.Button(label="ミュート解除", custom_id="unmute", style=discord.ButtonStyle.red)))
-                await interaction.followup.send(content="ミュートしました。")
+                await interaction.followup.send(content="ミュートしました。", ephemeral=True)
             elif custom_id == "unmute":
                 await interaction.response.defer(ephemeral=True)
                 thread_name = interaction.channel.name
@@ -120,7 +120,7 @@ async def on_interaction(interaction: discord.Interaction):
                     await interaction.followup.send(content="ミュートを解除できませんでした。", ephemeral=True)
                     return
                 await interaction.channel.send(content=f"このユーザーのミュートを解除しました。\n-# {interaction.user.mention}が解除しました。", view=discord.ui.View(timeout=None).add_item(discord.ui.Button(label="ミュート解除", custom_id="unmute", style=discord.ButtonStyle.red)))
-                await interaction.followup.send(content="ミュートしました。")
+                await interaction.followup.send(content="ミュートを解除しました。", ephemeral=True)
 
 @bot.event
 async def on_message(message: discord.Message):
@@ -137,7 +137,7 @@ async def on_message(message: discord.Message):
         print("指定されたチャンネルが見つかりません。")
         return
     
-    if message.author.id in mute_members:
+    if str(message.author.id) in mute_members:
         return
 
     webhooks = await channel.webhooks()
