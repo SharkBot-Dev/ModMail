@@ -58,7 +58,7 @@ class SendModal(discord.ui.Modal):
         channel = bot.get_channel(1523887748287692850)
         if channel:
             webhooks = await channel.webhooks()
-            webhook = discord.utils.get(webhooks, name=thread_name)
+            webhook = discord.utils.get(webhooks, name="ModMail")
             if webhook:
                 await webhook.send(
                     content=self.content.value, 
@@ -143,10 +143,10 @@ async def on_message(message: discord.Message):
         return
 
     webhooks = await channel.webhooks()
-    webhook = discord.utils.get(webhooks, name=thread_name)
+    webhook = discord.utils.get(webhooks, name="ModMail")
     
     if not webhook:
-        webhook = await channel.create_webhook(name=thread_name)
+        webhook = await channel.create_webhook(name="ModMail")
 
     target_thread = None
     for t in channel.threads:
